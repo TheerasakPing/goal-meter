@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.3.0] - 2026-10-09
 
 ### Added
 - Claude usage quota in the pane: the 5-hour and weekly windows side by side on one row, each with a bar, percent used and time until it resets, plus context fill and session cost below.
@@ -26,5 +26,6 @@ All notable changes to this project are documented here. The format follows [Kee
 - `/goal-meter` command to open the pane, set a goal or clear it.
 - Status line summary and a toast when the goal is reached.
 
+[0.3.0]: https://github.com/TheerasakPing/goal-meter/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/TheerasakPing/goal-meter/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/TheerasakPing/goal-meter/releases/tag/v0.1.0

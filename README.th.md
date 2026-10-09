@@ -41,6 +41,17 @@
 claude plugin marketplace update goal-meter
 ```
 
+## ใช้ได้ที่ไหน
+
+| ที่ใช้ | ใช้ได้ |
+| --- | --- |
+| Claude Code ใน terminal | ✅ ติดตั้งและใช้ได้ |
+| Claude Desktop แท็บ **Code** | ✅ ติดตั้งจาก terminal แบบ scope `user` แล้วโหลดในแอปด้วย |
+| Claude Code ใน VS Code, มือถือ | น่าจะได้ (ยังไม่ได้ทดสอบ) |
+| claude.ai แชต, แอป Claude แชต | ❌ ไม่รองรับ mod |
+
+โควต้าต้องใช้ subscription (Pro/Max) และขึ้นหลัง Claude ตอบครั้งแรกใน session สร้างบน API mod แบบ early access ของ Claude Code 2.1.295
+
 ## ใช้งาน
 
 สั่งงานหลายขั้นตอนให้ Claude ได้เลย meter จะเปิดและอัปเดตเองระหว่างทำงาน

@@ -1,6 +1,6 @@
 {
   "name": "goal-meter",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Goal meter pane: big goal, main tasks, subtasks, colored status, elapsed time and ETA",
   "author": { "name": "TheerasakPing" },
   "license": "MIT",

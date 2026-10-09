@@ -44,6 +44,17 @@ claude plugin marketplace update goal-meter
 
 > The `/plugin` command works in a terminal session. A mod installed at the user scope also loads in the desktop app's Code tab.
 
+## Where it works
+
+| Where | Works |
+| --- | --- |
+| Claude Code in a terminal | ✅ Install and use |
+| Claude Desktop, **Code** tab | ✅ Install from a terminal at the `user` scope; it loads there too |
+| Claude Code in VS Code, mobile | Should work (not tested) |
+| claude.ai chat, Claude app chat | ❌ No mod support there |
+
+The usage quota needs a Claude subscription (Pro or Max) and shows after Claude's first reply in a session. Built against Claude Code 2.1.295's early-access mod API.
+
 ## Usage
 
 Give Claude any multi-step task. The meter opens and fills in as Claude works.
