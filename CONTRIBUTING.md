@@ -21,6 +21,7 @@ Both must pass. CI runs the same two commands.
 
 - Keep pure logic (merging, progress, ETA, bar slices) in `hooks/meter.ts` and add a test for it.
 - Keep colors in `hooks/palette.ts`.
+- The engine reads `register.tsx` statically: every function that is given `$`, and every `atom(...)`, must be declared in that file, and hook matchers must be literals. Pure logic and drawing (which gets the element table, not `$`) can live in other files.
 - If you change what the pane shows, add or update a test in `hooks/goal-meter.test.tsx` that mounts it on both the `terminal` and `desktop` surfaces.
 - Add a line under an `Unreleased` heading in `CHANGELOG.md`.
 

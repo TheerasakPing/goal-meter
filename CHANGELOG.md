@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-10-10
+
+### Added
+- Follows Claude Code's own task list (`TodoWrite`, `TaskCreate`, `TaskUpdate`) when the meter's `update` tool is not in use.
+- Active time: the clock runs only while a turn is working, shown next to wall time; `/goal-meter pause` and `resume`.
+- ETA calibrated from history: the median of actual over predicted time of finished goals, kept between 0.5 and 2.
+- `/goal-meter deadline HH:MM`, with on time or late shown in the band, the pane and the status line.
+- Cost per goal and per task.
+- Quota forecast (`5 ชม. หมดราว 15:40`), a red warning when a window would run out before the goal is done, and alerts with sound at 80% and 90%.
+- Subagents in the pane while they run, and their count in the band and status line.
+- `/goal-meter report` (Markdown summary) and `/goal-meter history` (finished goals).
+- A goal in progress carries over to the next session.
+- Pane buttons: press a task to ask Claude to continue it; pause, mode and sound buttons (`p`, `m`, `s`).
+- Sounds when a goal is reached and on quota alerts; `/goal-meter sound on | off`.
+- `/goal-meter help`.
+
+### Changed
+- The code is split into `views.tsx`, `quota.ts`, `report.ts` and `state.ts`.
+
 ## [0.4.0] - 2026-10-10
 
 ### Added
@@ -37,6 +56,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - `/goal-meter` command to open the pane, set a goal or clear it.
 - Status line summary and a toast when the goal is reached.
 
+[0.5.0]: https://github.com/TheerasakPing/goal-meter/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/TheerasakPing/goal-meter/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/TheerasakPing/goal-meter/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/TheerasakPing/goal-meter/compare/v0.1.0...v0.2.0
