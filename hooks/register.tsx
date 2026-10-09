@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
-import type { Register, SessionUsage } from 'claude-code'
+import type { EngineInterface, Register, SessionUsage } from 'claude-code'
 
-import type { Goal, Step } from '../types'
+import type { Goal, Mode, Step } from '../types'
 import { estimate, formatClock, formatDuration, formatSpan, mergeTasks, displayWidth, progress, quotaLabel, slices } from './meter'
 import type { TaskInput } from './meter'
 import { PALETTE, STATUS_COLOR, gradientAt, icon, taskColor } from './palette'
@@ -11,6 +11,11 @@ const TOOL = 'mcp__goal-meter__update'
 const goalAtom = atom({ plugin: 'goal-meter', key: 'goal' } as const, null)
 const nowAtom = atom({ plugin: 'goal-meter', key: 'now' } as const, 0)
 const isBandHiddenAtom = atom({ plugin: 'goal-meter', key: 'isBandHidden' } as const, false)
+const modeAtom = atom({ plugin: 'goal-meter', key: 'mode' } as const, 'both')
+const MODES: readonly Mode[] = ['status', 'panel', 'both']
+const MODE_KEY = 'mode'
+const hasStatus = (mode: Mode) => mode !== 'panel'
+const hasPanel = (mode: Mode) => mode !== 'status'
 
 
 const INPUT_SCHEMA = {
@@ -73,12 +78,18 @@ const goalStatus = (goal: Goal, now: number): string => {
   return `Goal ${pct}% (${done}/${total})${doing} · ${eta}`
 }
 
+const showStatus = async ($: EngineInterface, text: string | undefined) => {
+  $.ui.status(hasStatus(await read($, modeAtom)) ? text : undefined)
+}
+
+const openPane = ($: EngineInterface) => $.ui.open({ id: PANE, title: 'Goal meter' }).catch(() => undefined)
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'goal-meter',
       description: 'Goal meter above the prompt: show, hide, open as a pane, set a goal, or clear it',
-      argumentHint: '[goal text | hide | pane | clear]',
+      argumentHint: '[goal text | hide | pane | mode status|panel|both | clear]',
     })
     await $.tool.register({
       name: 'update',
@@ -92,15 +103,19 @@ export const register: Register = on => {
     $.clock.every(500, () => {
       void $.clock.now().then(now => update($, nowAtom, () => now))
     })
+    const stored = await $.store.get(MODE_KEY).catch(() => undefined)
+    const mode: Mode = MODES.includes(stored as Mode) ? (stored as Mode) : 'both'
+    await update($, modeAtom, () => mode)
     const goal = await read($, goalAtom)
-    $.ui.status(statusLine(goal, startNow, await $.session.usage().catch(() => null)))
+    await showStatus($, statusLine(goal, startNow, await $.session.usage().catch(() => null)))
+    if (goal !== null && hasPanel(mode)) void openPane($)
 
     return next(e)
   })
 
   on('session.measure', async ($, e, next) => {
     const goal = await read($, goalAtom)
-    $.ui.status(statusLine(goal, await $.clock.now(), { startedAt: 0, ...e }))
+    await showStatus($, statusLine(goal, await $.clock.now(), { startedAt: 0, ...e }))
 
     return next(e)
   })
@@ -131,8 +146,11 @@ export const register: Register = on => {
     const goal: Goal = { ...base, tasks, doneAt: isDone ? (base.doneAt ?? now) : null }
 
     await update($, goalAtom, () => goal)
-    $.ui.status(statusLine(goal, now, await $.session.usage().catch(() => null)))
-    if (isNewGoal) await update($, isBandHiddenAtom, () => false)
+    await showStatus($, statusLine(goal, now, await $.session.usage().catch(() => null)))
+    if (isNewGoal) {
+      await update($, isBandHiddenAtom, () => false)
+      if (hasPanel(await read($, modeAtom))) void openPane($)
+    }
     if (isDone && base.doneAt === null) {
       $.ui.toast(`สำเร็จ: ${goal.title} (${formatDuration(estimate(goal, now).elapsedMs)})`)
     }
@@ -145,7 +163,7 @@ export const register: Register = on => {
     const args = e.args.trim()
     if (args === 'clear') {
       await update($, goalAtom, () => null)
-      $.ui.status(statusLine(null, 0, await $.session.usage().catch(() => null)))
+      await showStatus($, statusLine(null, 0, await $.session.usage().catch(() => null)))
 
       return { text: 'Goal meter cleared.' }
     }
@@ -153,6 +171,21 @@ export const register: Register = on => {
       await update($, isBandHiddenAtom, () => true)
 
       return { text: 'Goal meter hidden. /goal-meter shows it again.' }
+    }
+    const modeArg = /^mode\s+(\S+)$/.exec(args)?.[1]
+    if (args === 'mode' || modeArg !== undefined) {
+      if (modeArg === undefined || !MODES.includes(modeArg as Mode)) {
+        return { text: `Mode: ${await read($, modeAtom)}. Use /goal-meter mode status | panel | both` }
+      }
+      const mode = modeArg as Mode
+      await update($, modeAtom, () => mode)
+      await $.store.set(MODE_KEY, mode).catch(() => undefined)
+      await update($, isBandHiddenAtom, () => false)
+      await showStatus($, statusLine(await read($, goalAtom), await $.clock.now(), await $.session.usage().catch(() => null)))
+      if (hasPanel(mode)) await openPane($)
+      else await $.ui.close({ id: PANE })
+
+      return { text: `Goal meter mode: ${mode}` }
     }
     if (args === 'pane') {
       await $.ui.open({ id: PANE, title: 'Goal meter' })
@@ -163,18 +196,20 @@ export const register: Register = on => {
       const now = await $.clock.now()
       const goal: Goal = { title: args, startedAt: now, doneAt: null, tasks: [] }
       await update($, goalAtom, () => goal)
-      $.ui.status(statusLine(goal, now, await $.session.usage().catch(() => null)))
+      await showStatus($, statusLine(goal, now, await $.session.usage().catch(() => null)))
     }
     await update($, isBandHiddenAtom, () => false)
+    const mode = await read($, modeAtom)
+    if (hasPanel(mode)) await openPane($)
 
-    return { text: args === '' ? 'Goal meter shown above the prompt.' : `Goal set: ${args}` }
+    return { text: args === '' ? `Goal meter shown (mode: ${mode}).` : `Goal set: ${args}` }
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const goal = await read($, goalAtom)
     const usage = await $.session.usage().catch(() => null)
     const limits = usage?.rateLimits ?? []
-    if (e.props.hasSurvey || (await read($, isBandHiddenAtom)) || (goal === null && limits.length === 0)) {
+    if (e.props.hasSurvey || (await read($, isBandHiddenAtom)) || !hasStatus(await read($, modeAtom)) || (goal === null && limits.length === 0)) {
       return next(e)
     }
 

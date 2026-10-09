@@ -175,3 +175,32 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(hidden.some(t => t.text === 'Ship login ')).toBe(false)
   })
 }
+
+test('panel mode leaves the band to the engine and status mode closes the pane', async ($, on) => {
+  mock.clock(on, { now: 1_000_000 })
+  const opened: string[] = []
+  const closed: string[] = []
+  on('ui.status', () => ({ value: undefined }) as never)
+  on('ui.open', (_$, e) => (opened.push(e.id), { value: { isPlaced: true } }) as never)
+  on('ui.close', (_$, e) => (closed.push(e.id), { value: undefined }) as never)
+  on('store.set', () => ({ value: undefined }) as never)
+  on('session.usage', () => ({ value: { startedAt: 0, context: { window: 1 }, rateLimits: [] } }) as never)
+  on('ui.render', { component: 'AbovePrompt' }, ($, e) => {
+    const { Box } = $.ui.resolve(e)
+    return <Box />
+  })
+  await $.tool.call({ tool: TOOL, goal: 'Ship', tasks: [{ title: 'Build', status: 'in_progress' }] })
+  expect(opened).toEqual(['goal-meter'])
+
+  await $.command.run({ command: 'goal-meter', args: 'mode panel' } as never)
+  const band = await $.ui.mount({
+    plugin: 'goal-meter',
+    surface: 'terminal',
+    component: 'AbovePrompt',
+    props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80 } as never,
+  })
+  expect((await band.findAll({ type: 'Text' })).length).toBe(0)
+
+  await $.command.run({ command: 'goal-meter', args: 'mode status' } as never)
+  expect(closed).toEqual(['goal-meter'])
+})

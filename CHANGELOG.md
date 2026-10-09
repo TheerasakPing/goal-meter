@@ -7,10 +7,11 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 - A two-row band above the prompt: goal, stacked progress bar, ETA, the task in progress and the quota.
 - `/goal-meter hide` hides the band; `/goal-meter pane` opens the full pane.
+- `/goal-meter mode status | panel | both` picks where the meter shows, remembered across sessions (default `both`).
 - The status line names the task in progress.
 
 ### Changed
-- The pane no longer opens by itself; the band above the prompt is the default view.
+- In `status` mode the pane no longer opens by itself.
 
 ## [0.3.0] - 2026-10-09
 

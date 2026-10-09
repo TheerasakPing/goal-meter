@@ -65,14 +65,17 @@ Give Claude any multi-step task. The meter opens and fills in as Claude works.
 | `/goal-meter <goal>` | Set a goal yourself |
 | `/goal-meter hide` | Hide the meter above the prompt (the status line stays) |
 | `/goal-meter pane` | Open the full meter as a pane |
+| `/goal-meter mode status` | Band above the prompt and status line only |
+| `/goal-meter mode panel` | Pane only |
+| `/goal-meter mode both` | Both (default) |
 | `/goal-meter clear` | Clear the goal |
 
-The meter shows in two places:
+The mode is remembered across sessions. The meter shows in up to three places:
 
 - **Above the prompt**, a two-row band: the goal, the stacked progress bar, ETA, the task in progress and the quota.
 - **In the status line**, one line of text: `Goal 52% (5/11) · ◐ Build the API · ETA 14:52 | 5 ชม. 47% · สัปดาห์ 24%`.
 
-The full pane with every task and subtask opens only when you run `/goal-meter pane`.
+- **In a pane**, the full meter with every task and subtask, opened by itself when a goal starts in `panel` or `both` mode, or any time with `/goal-meter pane`.
 
 ## How it works
 

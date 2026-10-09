@@ -9,6 +9,9 @@ export type Step = {
 
 export type MainTask = Step & { subtasks: Step[] }
 
+// Where the meter shows: the band above the prompt and the status line, the pane, or both.
+export type Mode = 'status' | 'panel' | 'both'
+
 export type Goal = {
   title: string
   startedAt: number
@@ -18,6 +21,6 @@ export type Goal = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'goal-meter': { goal: Goal | null; now: number; isBandHidden: boolean }
+    'goal-meter': { goal: Goal | null; now: number; isBandHidden: boolean; mode: Mode }
   }
 }
