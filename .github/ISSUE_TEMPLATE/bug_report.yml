@@ -1,0 +1,35 @@
+name: Bug report
+description: Something in the goal meter is wrong or broken
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead. A screenshot of the pane helps.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run /goal-meter Ship it
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: goal-meter version
+      placeholder: "0.2.0"
+  - type: input
+    id: claude
+    attributes:
+      label: Claude Code version
+      description: Output of `claude --version`
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      options: [Terminal, Desktop app, VS Code, Other]
