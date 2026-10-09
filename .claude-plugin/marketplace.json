@@ -1,0 +1,5 @@
+{
+  "name": "goal-meter",
+  "owner": { "name": "TheerasakPing" },
+  "plugins": [{ "name": "goal-meter", "source": "./", "description": "Goal meter pane for Claude Code: goal, tasks, subtasks, progress, elapsed time and ETA" }]
+}
