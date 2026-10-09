@@ -36,11 +36,14 @@ At the prompt of a Claude Code session in a terminal:
 
 Answer `y` to add the marketplace, then pick a scope (`user` is recommended). The mod is active right away.
 
-**Update** to the latest version:
+**Update** to the latest version, in a terminal:
 
 ```
 claude plugin marketplace update goal-meter
+claude plugin update goal-meter@goal-meter
 ```
+
+The first command fetches the new version list, the second updates the installed mod. Then start a new session.
 
 > The `/plugin` command works in a terminal session. A mod installed at the user scope also loads in the desktop app's Code tab.
 

@@ -35,11 +35,14 @@
 
 ตอบ `y` เพื่อเพิ่ม marketplace แล้วเลือก scope (แนะนำ `user`) ใช้งานได้ทันที
 
-**อัปเดต** เป็นเวอร์ชันล่าสุด:
+**อัปเดต** เป็นเวอร์ชันล่าสุด รันใน terminal:
 
 ```
 claude plugin marketplace update goal-meter
+claude plugin update goal-meter@goal-meter
 ```
+
+คำสั่งแรกดึงรายการเวอร์ชันใหม่ คำสั่งที่สองอัปเดตตัวที่ติดตั้งอยู่ จากนั้นเปิด session ใหม่
 
 ## ใช้ได้ที่ไหน
 
