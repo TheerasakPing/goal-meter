@@ -19,6 +19,11 @@ export const STATUS_COLOR: Record<Status, string> = {
   pending: PALETTE.pending,
 }
 
+// One color per main task, reused in its row and its stretch of the bar.
+const TASK_COLORS = ['#3b82f6', '#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#eab308', '#06b6d4', '#84cc16'] as const
+
+export const taskColor = (i: number): string => TASK_COLORS[i % TASK_COLORS.length] ?? '#3b82f6'
+
 const SPINNER = ['◐', '◓', '◑', '◒'] as const
 
 export const icon = (status: Status, now: number): string =>

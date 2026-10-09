@@ -102,3 +102,27 @@ export const formatClock = (at: number): string => {
 
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
+
+export type Slice = { task: number; done: number; running: number; empty: number }
+
+// Splits `width` cells among the tasks by their leaf units, in task order,
+// each task's cells split into done, running and not yet started.
+export const slices = (goal: Goal, width: number): Slice[] => {
+  const units = goal.tasks.map(task => Math.max(1, task.subtasks.length))
+  const total = units.reduce((a, b) => a + b, 0)
+  let unitsBefore = 0
+
+  return goal.tasks.map((task, i) => {
+    const u = units[i] ?? 1
+    const from = Math.round((unitsBefore / total) * width)
+    unitsBefore += u
+    const cells = Math.round((unitsBefore / total) * width) - from
+    const leaves = task.subtasks.length > 0 ? task.subtasks : [task]
+    const doneUnits = leaves.filter(s => s.status === 'done').length
+    const runUnits = leaves.filter(s => s.status === 'in_progress').length
+    const done = Math.round((doneUnits / u) * cells)
+    const running = Math.min(cells - done, Math.max(runUnits > 0 ? 1 : 0, Math.round((runUnits / u) * cells)))
+
+    return { task: i, done, running, empty: cells - done - running }
+  })
+}

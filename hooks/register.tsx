@@ -2,16 +2,15 @@ import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 
 import type { Goal, Step } from '../types'
-import { estimate, formatClock, formatDuration, mergeTasks, progress } from './meter'
+import { estimate, formatClock, formatDuration, mergeTasks, progress, slices } from './meter'
 import type { TaskInput } from './meter'
-import { PALETTE, STATUS_COLOR, gradientAt, icon } from './palette'
+import { PALETTE, STATUS_COLOR, gradientAt, icon, taskColor } from './palette'
 
 const PANE = 'goal-meter'
 const TOOL = 'mcp__goal-meter__update'
 const goalAtom = atom({ plugin: 'goal-meter', key: 'goal' } as const, null)
 const nowAtom = atom({ plugin: 'goal-meter', key: 'now' } as const, 0)
 
-const SEGMENTS = 10
 
 const INPUT_SCHEMA = {
   type: 'object',
@@ -75,7 +74,7 @@ export const register: Register = on => {
     })
     const startNow = await $.clock.now()
     await update($, nowAtom, () => startNow)
-    $.clock.every(1000, () => {
+    $.clock.every(500, () => {
       void $.clock.now().then(now => update($, nowAtom, () => now))
     })
     const goal = await read($, goalAtom)
@@ -166,15 +165,9 @@ export const register: Register = on => {
     const { done, total, ratio } = progress(goal)
     const { elapsedMs, remainingMs, etaAt } = estimate(goal, now)
     const isGoalDone = goal.doneAt !== null
-    const width = Math.max(SEGMENTS, Math.min(24, cols - 30))
-    const seg = width / SEGMENTS
-    const filledCells = Math.round(Math.min(1, ratio) * width)
-    const segments = Array.from({ length: SEGMENTS }, (_, k) => {
-      const from = Math.round(k * seg)
-      const to = Math.round((k + 1) * seg)
-      const full = Math.max(0, Math.min(to, filledCells) - from)
-      return { full: '█'.repeat(full), empty: '░'.repeat(to - from - full), color: gradientAt((k + 0.5) / SEGMENTS) }
-    })
+    const pctText = ` ${Math.round(ratio * 100)}%`
+    const width = Math.max(10, cols - pctText.length - 1)
+    const isBlinkOn = Math.floor(now / 500) % 2 === 0
     const stepTime = (step: Step): string =>
       step.startedAt === null ? '' : formatDuration((step.doneAt ?? now) - step.startedAt)
     const dots = (subs: readonly Step[]) =>
@@ -191,12 +184,19 @@ export const register: Register = on => {
           </Text>
         </Box>
         <Box>
-          {segments.map(s => (
-            <Text color={s.color}>{s.full}</Text>
+          {slices(goal, width).map(slice => (
+            <Box>
+              <Text color={taskColor(slice.task)}>{'█'.repeat(slice.done)}</Text>
+              <Text color={taskColor(slice.task)} dimColor={!isBlinkOn}>
+                {(isBlinkOn ? '▓' : '░').repeat(slice.running)}
+              </Text>
+              <Text color="subtle">{'░'.repeat(slice.empty)}</Text>
+            </Box>
           ))}
-          <Text color="subtle">{segments.map(s => s.empty).join('')}</Text>
-          <Text bold color={gradientAt(ratio)}>{` ${Math.round(ratio * 100)}%`}</Text>
-          <Text dimColor>{` ${done}/${total} `}</Text>
+          <Text bold color={gradientAt(ratio)}>{pctText}</Text>
+        </Box>
+        <Box>
+          <Text dimColor>{`${done}/${total} · `}</Text>
           <Text color={PALETTE.elapsed}>{`ใช้ ${formatDuration(elapsedMs)}`}</Text>
           {isGoalDone ? (
             <Text bold color={PALETTE.done}> · สำเร็จ ✔</Text>
@@ -216,9 +216,15 @@ export const register: Register = on => {
               <Box justifyContent="space-between">
                 <Box>
                   <Text color={STATUS_COLOR[task.status]} bold>{`${icon(task.status, now)} `}</Text>
-                  <Text color={PALETTE.header} bold>{`${i + 1}.`}</Text>
                   <Text
-                    color={task.status === 'pending' ? 'text' : STATUS_COLOR[task.status]}
+                    color={taskColor(i)}
+                    dimColor={task.status === 'in_progress' && !isBlinkOn}
+                  >
+                    {task.status === 'pending' ? '░' : '█'}
+                  </Text>
+                  <Text color={taskColor(i)} bold>{` ${i + 1}.`}</Text>
+                  <Text
+                    color={task.status === 'pending' ? 'text' : taskColor(i)}
                     bold={task.status === 'in_progress'}
                     dimColor={task.status === 'pending'}
                     wrap="truncate-end"
@@ -239,7 +245,7 @@ export const register: Register = on => {
                     <Text color="subtle">{j === task.subtasks.length - 1 ? '  └ ' : '  ├ '}</Text>
                     <Text color={STATUS_COLOR[sub.status]}>{`${icon(sub.status, now)} `}</Text>
                     <Text
-                      color={sub.status === 'pending' ? 'text' : STATUS_COLOR[sub.status]}
+                      color={sub.status === 'pending' ? 'text' : taskColor(i)}
                       dimColor={sub.status !== 'in_progress'}
                       strikethrough={sub.status === 'done'}
                       wrap="truncate-end"

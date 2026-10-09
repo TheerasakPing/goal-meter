@@ -1,6 +1,7 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 
-import { PALETTE } from './palette'
+import { slices } from './meter'
+import { taskColor } from './palette'
 
 const SURFACES = ['terminal', 'desktop'] as const
 const TOOL = 'mcp__goal-meter__update'
@@ -56,18 +57,37 @@ describe('goal meter', () => {
       const texts = await ui.findAll({ type: 'Text' })
       const line = (part: string) => texts.find(t => t.text.includes(part))
       const exact = (part: string) => texts.find(t => t.text === part)
-      expect(exact(' Design')?.props.color).toBe(PALETTE.done)
-      expect(exact(' Build')?.props.color).toBe(PALETTE.running)
+      expect(exact(' Design')?.props.color).toBe(taskColor(0))
+      expect(exact(' Build')?.props.color).toBe(taskColor(1))
       expect(exact(' Test')?.props.dimColor).toBe(true)
       // Build is running: its subtasks open below it
       expect(exact('API')?.props.strikethrough).toBe(true)
       expect(exact('UI')?.props.dimColor).toBe(true)
       // leaves: Design(done) API(done) UI(pending) Test(pending) -> 50%
       expect(line('%')?.text).toContain('50%')
+      // Design's own color fills its stretch of the bar once it is done
+      const designBar = texts.find(t => t.props.color === taskColor(0) && t.text.startsWith('█'))
+      expect(designBar?.text.length).toBeGreaterThan(0)
       // 10 min elapsed at 50% -> ~10 min left
       expect(line('ใช้ ')?.text).toContain('10m00s')
       expect(line('เหลือ')?.text).toContain('~10m00s')
       expect(exact(' Build')?.props.bold).toBe(true)
     })
   }
+})
+
+test('slices split the bar by task, done then running then empty', () => {
+  const step = (status: 'pending' | 'in_progress' | 'done') => ({ title: status, status, startedAt: null, doneAt: null })
+  const goal = {
+    title: 'g',
+    startedAt: 0,
+    doneAt: null,
+    tasks: [
+      { ...step('done'), subtasks: [] },
+      { ...step('in_progress'), subtasks: [step('done'), step('in_progress'), step('pending')] },
+    ],
+  }
+  const [a, b] = slices(goal, 40)
+  expect(a).toEqual({ task: 0, done: 10, running: 0, empty: 0 })
+  expect(b).toEqual({ task: 1, done: 10, running: 10, empty: 10 })
 })
