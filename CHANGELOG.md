@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- A two-row band above the prompt: goal, stacked progress bar, ETA, the task in progress and the quota.
+- `/goal-meter hide` hides the band; `/goal-meter pane` opens the full pane.
+- The status line names the task in progress.
+
+### Changed
+- The pane no longer opens by itself; the band above the prompt is the default view.
+
 ## [0.3.0] - 2026-10-09
 
 ### Added

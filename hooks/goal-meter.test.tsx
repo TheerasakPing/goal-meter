@@ -131,3 +131,47 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(quotaRow?.text).toContain('สัปดาห์')
   })
 }
+
+for (const surface of ['terminal', 'desktop'] as const) {
+  test(`draws the band above the prompt and hides it on ${surface}`, async ($, on) => {
+    mock.clock(on, { now: 1_000_000 })
+    on('ui.status', () => ({ value: undefined }) as never)
+    // what the engine draws when the mod steps aside
+    on('ui.render', { component: 'AbovePrompt' }, ($, e) => {
+      const { Box } = $.ui.resolve(e)
+      return <Box />
+    })
+    on('session.usage', () => ({
+      value: {
+        startedAt: 0,
+        context: { window: 200_000 },
+        rateLimits: [{ kind: 'five_hour', percentUsed: 47 }],
+      },
+    }) as never)
+    await $.tool.call({
+      tool: TOOL,
+      goal: 'Ship login',
+      tasks: [
+        { title: 'Design', status: 'done' },
+        { title: 'Build', status: 'in_progress' },
+      ],
+    })
+
+    const band = () =>
+      $.ui.mount({
+        plugin: 'goal-meter',
+        surface,
+        component: 'AbovePrompt',
+        props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80 } as never,
+      })
+    const texts = (await (await band()).findAll({ type: 'Text' })).map(t => t.text)
+    expect(texts).toContain('Ship login ')
+    expect(texts).toContain('2/2 ')
+    expect(texts).toContain('Build')
+    expect(texts).toContain('5 ชม. ')
+
+    await $.command.run({ command: 'goal-meter', args: 'hide' } as never)
+    const hidden = await (await band()).findAll({ type: 'Text' })
+    expect(hidden.some(t => t.text === 'Ship login ')).toBe(false)
+  })
+}

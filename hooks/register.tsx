@@ -10,6 +10,7 @@ const PANE = 'goal-meter'
 const TOOL = 'mcp__goal-meter__update'
 const goalAtom = atom({ plugin: 'goal-meter', key: 'goal' } as const, null)
 const nowAtom = atom({ plugin: 'goal-meter', key: 'now' } as const, 0)
+const isBandHiddenAtom = atom({ plugin: 'goal-meter', key: 'isBandHidden' } as const, false)
 
 
 const INPUT_SCHEMA = {
@@ -66,15 +67,18 @@ const goalStatus = (goal: Goal, now: number): string => {
   if (goal.doneAt !== null) return `Goal: ${goal.title} · เสร็จแล้ว ✔`
   const eta = etaAt === null || remainingMs === null ? 'ETA –' : `ETA ${formatClock(etaAt)}`
 
-  return `Goal ${pct}% (${done}/${total}) · ${eta}`
+  const current = goal.tasks.find(task => task.status === 'in_progress')
+  const doing = current === undefined ? '' : ` · ◐ ${current.title}`
+
+  return `Goal ${pct}% (${done}/${total})${doing} · ${eta}`
 }
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'goal-meter',
-      description: 'Goal meter: open the pane, set a goal, or clear it',
-      argumentHint: '[goal text | clear]',
+      description: 'Goal meter above the prompt: show, hide, open as a pane, set a goal, or clear it',
+      argumentHint: '[goal text | hide | pane | clear]',
     })
     await $.tool.register({
       name: 'update',
@@ -90,9 +94,6 @@ export const register: Register = on => {
     })
     const goal = await read($, goalAtom)
     $.ui.status(statusLine(goal, startNow, await $.session.usage().catch(() => null)))
-    if (goal !== null) {
-      void $.ui.open({ id: PANE, title: 'Goal meter' }).catch(() => undefined)
-    }
 
     return next(e)
   })
@@ -131,7 +132,7 @@ export const register: Register = on => {
 
     await update($, goalAtom, () => goal)
     $.ui.status(statusLine(goal, now, await $.session.usage().catch(() => null)))
-    if (isNewGoal) void $.ui.open({ id: PANE, title: 'Goal meter' }).catch(() => undefined)
+    if (isNewGoal) await update($, isBandHiddenAtom, () => false)
     if (isDone && base.doneAt === null) {
       $.ui.toast(`สำเร็จ: ${goal.title} (${formatDuration(estimate(goal, now).elapsedMs)})`)
     }
@@ -148,15 +149,110 @@ export const register: Register = on => {
 
       return { text: 'Goal meter cleared.' }
     }
+    if (args === 'hide') {
+      await update($, isBandHiddenAtom, () => true)
+
+      return { text: 'Goal meter hidden. /goal-meter shows it again.' }
+    }
+    if (args === 'pane') {
+      await $.ui.open({ id: PANE, title: 'Goal meter' })
+
+      return { text: 'Goal meter pane opened.' }
+    }
     if (args !== '') {
       const now = await $.clock.now()
       const goal: Goal = { title: args, startedAt: now, doneAt: null, tasks: [] }
       await update($, goalAtom, () => goal)
       $.ui.status(statusLine(goal, now, await $.session.usage().catch(() => null)))
     }
-    await $.ui.open({ id: PANE, title: 'Goal meter' })
+    await update($, isBandHiddenAtom, () => false)
 
-    return { text: args === '' ? 'Goal meter opened.' : `Goal set: ${args}` }
+    return { text: args === '' ? 'Goal meter shown above the prompt.' : `Goal set: ${args}` }
+  })
+
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    const goal = await read($, goalAtom)
+    const usage = await $.session.usage().catch(() => null)
+    const limits = usage?.rateLimits ?? []
+    if (e.props.hasSurvey || (await read($, isBandHiddenAtom)) || (goal === null && limits.length === 0)) {
+      return next(e)
+    }
+
+    const { Box, Text } = $.ui.resolve(e)
+    const now = Math.max(await read($, nowAtom), await $.clock.now())
+    const cols = e.props.bodyColumns || 80
+    const isBlinkOn = Math.floor(now / 500) % 2 === 0
+
+    const quotaParts = limits.map((limit, k) => {
+      const used = Math.min(100, Math.max(0, limit.percentUsed))
+      const width = 8
+      const cells = Math.round((used / 100) * width)
+      const color = gradientAt(1 - used / 100)
+      return (
+        <Box>
+          <Text dimColor>{`${k > 0 ? '  ' : ''}${quotaLabel(limit.kind)} `}</Text>
+          <Text color={color}>{'█'.repeat(cells)}</Text>
+          <Text color="subtle">{'░'.repeat(width - cells)}</Text>
+          <Text bold color={color}>{` ${Math.round(limit.percentUsed)}%`}</Text>
+        </Box>
+      )
+    })
+
+    if (goal === null) {
+      return <Box>{quotaParts}</Box>
+    }
+
+    const { done, total, ratio } = progress(goal)
+    const { remainingMs, etaAt } = estimate(goal, now)
+    const isGoalDone = goal.doneAt !== null
+    const pctText = ` ${Math.round(ratio * 100)}%`
+    const eta = isGoalDone
+      ? ' สำเร็จ ✔'
+      : remainingMs === null || etaAt === null
+        ? ' ประเมิน…'
+        : ` เสร็จ ${formatClock(etaAt)}`
+    const titleWidth = Math.min(28, Math.max(8, Math.floor(cols / 4)))
+    const title = goal.title.length > titleWidth ? `${goal.title.slice(0, titleWidth - 1)}…` : goal.title
+    const barWidth = Math.max(10, cols - displayWidth(title) - pctText.length - displayWidth(eta) - 3)
+    const currentIndex = goal.tasks.findIndex(task => task.status === 'in_progress')
+    const nextIndex = currentIndex >= 0 ? currentIndex : goal.tasks.findIndex(task => task.status === 'pending')
+    const current = nextIndex >= 0 ? goal.tasks[nextIndex] : undefined
+
+    return (
+      <Box flexDirection="column">
+        <Box>
+          <Text bold color={isGoalDone ? PALETTE.done : 'claude'}>{`${title} `}</Text>
+          {slices(goal, barWidth).map(slice => (
+            <Box>
+              <Text color={taskColor(slice.task)}>{'█'.repeat(slice.done)}</Text>
+              <Text color={taskColor(slice.task)} dimColor={!isBlinkOn}>
+                {(isBlinkOn ? '▓' : '░').repeat(slice.running)}
+              </Text>
+              <Text color="subtle">{'░'.repeat(slice.empty)}</Text>
+            </Box>
+          ))}
+          <Text bold color={gradientAt(ratio)}>{pctText}</Text>
+          <Text color={isGoalDone ? PALETTE.done : PALETTE.eta} bold>
+            {eta}
+          </Text>
+        </Box>
+        <Box justifyContent="space-between">
+          <Box>
+            {current !== undefined && (
+              <Box>
+                <Text color={STATUS_COLOR[current.status]} bold>{`${icon(current.status, now)} `}</Text>
+                <Text color={taskColor(nextIndex)} bold>{`${nextIndex + 1}/${goal.tasks.length} `}</Text>
+                <Text color={taskColor(nextIndex)} wrap="truncate-end">
+                  {current.title}
+                </Text>
+              </Box>
+            )}
+            {current === undefined && <Text dimColor>{`${done}/${total} งานย่อยเสร็จ`}</Text>}
+          </Box>
+          <Box>{quotaParts}</Box>
+        </Box>
+      </Box>
+    )
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {

@@ -58,11 +58,18 @@ claude plugin marketplace update goal-meter
 
 | คำสั่ง | ทำอะไร |
 | --- | --- |
-| `/goal-meter` | เปิด pane |
-| `/goal-meter <เป้าหมาย>` | ตั้งเป้าหมายเองแล้วเปิด pane |
+| `/goal-meter` | แสดง meter เหนือช่องพิมพ์ |
+| `/goal-meter <เป้าหมาย>` | ตั้งเป้าหมายเอง |
+| `/goal-meter hide` | ซ่อน meter เหนือช่องพิมพ์ (status line ยังอยู่) |
+| `/goal-meter pane` | เปิด meter แบบเต็มเป็น pane |
 | `/goal-meter clear` | ล้างเป้าหมาย |
 
-ถ้าจอแคบ pane จะยังไม่เปิดเอง ให้พิมพ์ `/goal-meter`
+meter แสดง 2 ที่:
+
+- **เหนือช่องพิมพ์** เป็นแถบ 2 บรรทัด: เป้าหมาย แถบความคืบหน้า เวลาเสร็จ งานที่กำลังทำ และโควต้า
+- **status line** ข้อความบรรทัดเดียว: `Goal 52% (5/11) · ◐ Build the API · ETA 14:52 | 5 ชม. 47% · สัปดาห์ 24%`
+
+pane แบบเต็มที่มีทุกงานย่อยจะเปิดเมื่อสั่ง `/goal-meter pane` เท่านั้น
 
 ## ทำงานอย่างไร
 

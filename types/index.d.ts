@@ -18,6 +18,6 @@ export type Goal = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'goal-meter': { goal: Goal | null; now: number }
+    'goal-meter': { goal: Goal | null; now: number; isBandHidden: boolean }
   }
 }
