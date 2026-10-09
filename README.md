@@ -22,8 +22,9 @@
 - **One stacked progress bar.** Finished work fills the bar in its task's color, work in progress blinks, and work not started stays gray. The bar fills the pane's full width.
 - **Time and ETA.** Time spent on the goal and on each task, the time left, and the clock time it should finish.
 - **Status at a glance.** `✔` done (green), `◐` running (amber, spinning), `○` not started (gray). Finished subtasks are struck through.
+- **Usage quota.** Your Claude 5-hour and weekly limits, each as a bar with percent used and time until reset, plus context fill and session cost. Bars turn from green to red as you use more.
 - **Hands-free.** Claude keeps the meter up to date by itself through the `update` tool. You don't have to do anything.
-- **Status line.** `Goal 52% (5/11) · ETA 14:52` stays in the status line while the pane is closed.
+- **Status line.** `Goal 52% (5/11) · ETA 14:52 | 5 ชม. 47% · สัปดาห์ 24%` stays in the status line while the pane is closed.
 
 ## Install
 
@@ -82,6 +83,8 @@ The mod registers a tool, `mcp__goal-meter__update`, and adds a short note to th
 - **A task with subtasks** takes its status from them: done when all are done, running when any has started.
 - **Progress** counts leaf units: each subtask, or the task itself when it has none. Done counts 1, running counts ½.
 - **ETA** is `elapsed × (1 − progress) ÷ progress`, refreshed every half second.
+
+**Quota** comes from the rate-limit windows the last API response reported (`$.session.usage()`), so it shows once Claude has answered at least once, and only on a Claude subscription.
 
 State lives in the session (`$.state`), so it survives a reload of the mod but starts fresh in a new session.
 

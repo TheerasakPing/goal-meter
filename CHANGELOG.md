@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Claude usage quota in the pane: the 5-hour and weekly windows, each with a bar, percent used and time until it resets, plus context fill and session cost.
+- Quota in the status line (`5 ชม. 47% · สัปดาห์ 24%`), kept current as the engine measures the session.
+
 ## [0.2.0] - 2026-10-09
 
 ### Added

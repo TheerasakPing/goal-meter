@@ -1,8 +1,8 @@
 import { atom, read, update } from 'claude-code'
-import type { Register } from 'claude-code'
+import type { Register, SessionUsage } from 'claude-code'
 
 import type { Goal, Step } from '../types'
-import { estimate, formatClock, formatDuration, mergeTasks, progress, slices } from './meter'
+import { estimate, formatClock, formatDuration, formatSpan, mergeTasks, padDisplay, displayWidth, progress, quotaLabel, slices } from './meter'
 import type { TaskInput } from './meter'
 import { PALETTE, STATUS_COLOR, gradientAt, icon, taskColor } from './palette'
 
@@ -48,7 +48,18 @@ const GUIDE = [
   'Call it again, with the full list, every time a task or subtask starts or finishes, so the colors, elapsed time and ETA stay true. Mark everything "done" when the goal is reached.',
 ].join('\n')
 
-const statusLine = (goal: Goal, now: number): string => {
+const quotaLine = (usage: SessionUsage | null): string =>
+  (usage?.rateLimits ?? []).map(l => `${quotaLabel(l.kind)} ${Math.round(l.percentUsed)}%`).join(' · ')
+
+const statusLine = (goal: Goal | null, now: number, usage: SessionUsage | null = null): string | undefined => {
+  const quota = quotaLine(usage)
+  if (goal === null) return quota === '' ? undefined : `โควต้า ${quota}`
+  const goalPart = goalStatus(goal, now)
+
+  return quota === '' ? goalPart : `${goalPart} | ${quota}`
+}
+
+const goalStatus = (goal: Goal, now: number): string => {
   const { done, total, ratio } = progress(goal)
   const { remainingMs, etaAt } = estimate(goal, now)
   const pct = Math.round(ratio * 100)
@@ -78,10 +89,17 @@ export const register: Register = on => {
       void $.clock.now().then(now => update($, nowAtom, () => now))
     })
     const goal = await read($, goalAtom)
+    $.ui.status(statusLine(goal, startNow, await $.session.usage().catch(() => null)))
     if (goal !== null) {
-      $.ui.status(statusLine(goal, startNow))
       void $.ui.open({ id: PANE, title: 'Goal meter' }).catch(() => undefined)
     }
+
+    return next(e)
+  })
+
+  on('session.measure', async ($, e, next) => {
+    const goal = await read($, goalAtom)
+    $.ui.status(statusLine(goal, await $.clock.now(), { startedAt: 0, ...e }))
 
     return next(e)
   })
@@ -112,7 +130,7 @@ export const register: Register = on => {
     const goal: Goal = { ...base, tasks, doneAt: isDone ? (base.doneAt ?? now) : null }
 
     await update($, goalAtom, () => goal)
-    $.ui.status(statusLine(goal, now))
+    $.ui.status(statusLine(goal, now, await $.session.usage().catch(() => null)))
     if (isNewGoal) void $.ui.open({ id: PANE, title: 'Goal meter' }).catch(() => undefined)
     if (isDone && base.doneAt === null) {
       $.ui.toast(`สำเร็จ: ${goal.title} (${formatDuration(estimate(goal, now).elapsedMs)})`)
@@ -126,7 +144,7 @@ export const register: Register = on => {
     const args = e.args.trim()
     if (args === 'clear') {
       await update($, goalAtom, () => null)
-      $.ui.status(undefined)
+      $.ui.status(statusLine(null, 0, await $.session.usage().catch(() => null)))
 
       return { text: 'Goal meter cleared.' }
     }
@@ -134,7 +152,7 @@ export const register: Register = on => {
       const now = await $.clock.now()
       const goal: Goal = { title: args, startedAt: now, doneAt: null, tasks: [] }
       await update($, goalAtom, () => goal)
-      $.ui.status(statusLine(goal, now))
+      $.ui.status(statusLine(goal, now, await $.session.usage().catch(() => null)))
     }
     await $.ui.open({ id: PANE, title: 'Goal meter' })
 
@@ -146,6 +164,39 @@ export const register: Register = on => {
     const goal = await read($, goalAtom)
     const now = Math.max(await read($, nowAtom), await $.clock.now())
     const cols = e.props.bodyColumns || e.viewport?.columns || 50
+    const usage = await $.session.usage().catch(() => null)
+    const limits = usage?.rateLimits ?? []
+    const labelWidth = Math.max(0, ...limits.map(l => displayWidth(quotaLabel(l.kind)))) + 1
+    const quotaBar = Math.max(10, cols - labelWidth - 22)
+    const quota = (
+      <Box flexDirection="column">
+        <Box>
+          <Text color={PALETTE.header} bold>
+            {'โควต้า Claude '}
+          </Text>
+          {usage?.context.percent !== undefined && (
+            <Text dimColor>{`context ${Math.round(usage.context.percent)}%`}</Text>
+          )}
+          {usage?.cost !== undefined && <Text dimColor>{` · $${usage.cost.usd.toFixed(2)}`}</Text>}
+        </Box>
+        {limits.length === 0 && <Text dimColor>ยังไม่มีข้อมูลโควต้า (รอการตอบครั้งแรก หรือไม่ได้ใช้ subscription)</Text>}
+        {limits.map(limit => {
+          const used = Math.min(100, Math.max(0, limit.percentUsed))
+          const cells = Math.round((used / 100) * quotaBar)
+          const color = gradientAt(1 - used / 100)
+          const resetIn = limit.resetsAt === undefined ? NaN : Date.parse(limit.resetsAt) - now
+          return (
+            <Box>
+              <Text>{padDisplay(quotaLabel(limit.kind), labelWidth)}</Text>
+              <Text color={color}>{'█'.repeat(cells)}</Text>
+              <Text color="subtle">{'░'.repeat(quotaBar - cells)}</Text>
+              <Text bold color={color}>{` ${String(Math.round(limit.percentUsed)).padStart(3)}%`}</Text>
+              <Text dimColor>{Number.isFinite(resetIn) ? ` รีเซ็ต ${formatSpan(resetIn)}` : ''}</Text>
+            </Box>
+          )
+        })}
+      </Box>
+    )
 
     const badge = (
       <Text backgroundColor={PALETTE.header} color={PALETTE.onHeader} bold>
@@ -155,9 +206,13 @@ export const register: Register = on => {
 
     if (goal === null) {
       return (
-        <Box>
-          {badge}
-          <Text dimColor> ยังไม่มีเป้าหมาย — /goal-meter &lt;เป้าหมาย&gt;</Text>
+        <Box flexDirection="column">
+          <Box>
+            {badge}
+            <Text dimColor> ยังไม่มีเป้าหมาย — /goal-meter &lt;เป้าหมาย&gt;</Text>
+          </Box>
+          <Text> </Text>
+          {quota}
         </Box>
       )
     }
@@ -257,6 +312,8 @@ export const register: Register = on => {
             </Box>
           )
         })}
+        <Text> </Text>
+        {quota}
       </Box>
     )
   })

@@ -126,3 +126,30 @@ export const slices = (goal: Goal, width: number): Slice[] => {
     return { task: i, done, running, empty: cells - done - running }
   })
 }
+
+export const formatSpan = (ms: number): string => {
+  const m = Math.max(0, Math.round(ms / 60_000))
+  const d = Math.floor(m / 1440)
+  const h = Math.floor((m % 1440) / 60)
+  if (d > 0) return `${d}d${h}h`
+  if (h > 0) return `${h}h${String(m % 60).padStart(2, '0')}m`
+
+  return `${m}m`
+}
+
+const QUOTA_LABELS: Record<string, string> = {
+  five_hour: '5 ชม.',
+  seven_day: 'สัปดาห์',
+  spend_limit: 'วงเงิน',
+}
+
+export const quotaLabel = (kind: string): string =>
+  QUOTA_LABELS[kind] ?? kind.replace(/_/g, ' ')
+
+// Thai vowel and tone marks that sit above or below a letter take no column.
+const isZeroWidth = (ch: string): boolean => /[ัิ-ฺ็-๎]/.test(ch)
+
+export const displayWidth = (text: string): number => [...text].filter(ch => !isZeroWidth(ch)).length
+
+export const padDisplay = (text: string, width: number): string =>
+  text + ' '.repeat(Math.max(0, width - displayWidth(text)))

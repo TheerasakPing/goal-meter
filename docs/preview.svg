@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="820" height="300" viewBox="0 0 820 300" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Noto Sans Mono', monospace" font-size="14">
-  <rect width="820" height="300" rx="12" fill="#0f1117"/>
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="820" height="390" viewBox="0 0 820 390" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Noto Sans Mono', monospace" font-size="14">
+  <rect width="820" height="390" rx="12" fill="#0f1117"/>
   <rect width="820" height="34" rx="12" fill="#1a1d27"/>
   <rect y="22" width="820" height="12" fill="#1a1d27"/>
   <circle cx="22" cy="17" r="6" fill="#ff5f57"/>
@@ -36,4 +36,17 @@
 
   <text x="24" y="278"><tspan fill="#6b7280">○ </tspan><tspan fill="#14b8a6" opacity="0.6">░</tspan><tspan fill="#14b8a6" font-weight="700"> 3.</tspan><tspan fill="#9ca3af" opacity="0.7"> Test end to end</tspan></text>
   <text x="796" y="278" fill="#6b7280" text-anchor="end">···</text>
+
+  <!-- usage quota -->
+  <text x="24" y="314"><tspan fill="#6366f1" font-weight="700">โควต้า Claude </tspan><tspan fill="#6b7280">context 38% · $1.24</tspan></text>
+  <text x="24" y="340" fill="#e5e7eb">5 ชม.</text>
+  <rect x="100" y="329" width="560" height="14" rx="3" fill="#2a2e3a"/>
+  <rect x="100" y="329" width="263" height="14" rx="3" fill="#e9a00c"/>
+  <text x="672" y="340" fill="#e9a00c" font-weight="700">47%</text>
+  <text x="712" y="340" fill="#6b7280">รีเซ็ต 2h13m</text>
+  <text x="24" y="366" fill="#e5e7eb">สัปดาห์</text>
+  <rect x="100" y="355" width="560" height="14" rx="3" fill="#2a2e3a"/>
+  <rect x="100" y="355" width="134" height="14" rx="3" fill="#8fb33a"/>
+  <text x="672" y="366" fill="#8fb33a" font-weight="700">24%</text>
+  <text x="712" y="366" fill="#6b7280">รีเซ็ต 3d4h</text>
 </svg>
