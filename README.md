@@ -22,7 +22,7 @@
 - **One stacked progress bar.** Finished work fills the bar in its task's color, work in progress blinks, and work not started stays gray. The bar fills the pane's full width.
 - **Time and ETA.** Time spent on the goal and on each task, the time left, and the clock time it should finish.
 - **Status at a glance.** `✔` done (green), `◐` running (amber, spinning), `○` not started (gray). Finished subtasks are struck through.
-- **Usage quota.** Your Claude 5-hour and weekly limits, each as a bar with percent used and time until reset, plus context fill and session cost. Bars turn from green to red as you use more.
+- **Usage quota.** Your Claude 5-hour and weekly limits on one row, each as a bar with percent used and time until reset, plus context fill and session cost. Bars turn from green to red as you use more.
 - **Hands-free.** Claude keeps the meter up to date by itself through the `update` tool. You don't have to do anything.
 - **Status line.** `Goal 52% (5/11) · ETA 14:52 | 5 ชม. 47% · สัปดาห์ 24%` stays in the status line while the pane is closed.
 

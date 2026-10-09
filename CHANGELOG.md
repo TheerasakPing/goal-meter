@@ -5,7 +5,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ## [Unreleased]
 
 ### Added
-- Claude usage quota in the pane: the 5-hour and weekly windows, each with a bar, percent used and time until it resets, plus context fill and session cost.
+- Claude usage quota in the pane: the 5-hour and weekly windows side by side on one row, each with a bar, percent used and time until it resets, plus context fill and session cost below.
 - Quota in the status line (`5 ชม. 47% · สัปดาห์ 24%`), kept current as the engine measures the session.
 
 ## [0.2.0] - 2026-10-09

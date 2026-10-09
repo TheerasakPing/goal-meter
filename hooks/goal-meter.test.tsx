@@ -118,11 +118,16 @@ for (const surface of ['terminal', 'desktop'] as const) {
     const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
 
     expect(texts).toContain('5 ชม. ')
-    expect(texts).toContain('  47%')
-    expect(texts).toContain(' รีเซ็ต 2h13m')
-    expect(texts).toContain('สัปดาห์ ')
-    expect(texts).toContain('  24%')
-    expect(texts).toContain(' รีเซ็ต 3d4h')
-    expect(texts).toContain('context 38%')
+    expect(texts).toContain(' 47%')
+    expect(texts).toContain(' ↻2h13m')
+    expect(texts).toContain('  สัปดาห์ ')
+    expect(texts).toContain(' 24%')
+    expect(texts).toContain(' ↻3d4h')
+    expect(texts).toContain('context 38% · $1.24')
+    // both windows sit on one row
+    const rows = await ui.findAll({ type: 'Box' })
+    const quotaRow = rows.find(r => r.text.startsWith('โควต้า'))
+    expect(quotaRow?.text).toContain('5 ชม.')
+    expect(quotaRow?.text).toContain('สัปดาห์')
   })
 }

@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { Register, SessionUsage } from 'claude-code'
 
 import type { Goal, Step } from '../types'
-import { estimate, formatClock, formatDuration, formatSpan, mergeTasks, padDisplay, displayWidth, progress, quotaLabel, slices } from './meter'
+import { estimate, formatClock, formatDuration, formatSpan, mergeTasks, displayWidth, progress, quotaLabel, slices } from './meter'
 import type { TaskInput } from './meter'
 import { PALETTE, STATUS_COLOR, gradientAt, icon, taskColor } from './palette'
 
@@ -166,35 +166,42 @@ export const register: Register = on => {
     const cols = e.props.bodyColumns || e.viewport?.columns || 50
     const usage = await $.session.usage().catch(() => null)
     const limits = usage?.rateLimits ?? []
-    const labelWidth = Math.max(0, ...limits.map(l => displayWidth(quotaLabel(l.kind)))) + 1
-    const quotaBar = Math.max(10, cols - labelWidth - 22)
+    const perLimit = (l: { kind: string }) => displayWidth(quotaLabel(l.kind)) + 16
+    const fixed = 7 + limits.reduce((sum, l) => sum + perLimit(l), 0)
+    const quotaBar = Math.max(6, Math.floor((cols - fixed) / Math.max(1, limits.length)))
     const quota = (
       <Box flexDirection="column">
         <Box>
           <Text color={PALETTE.header} bold>
-            {'โควต้า Claude '}
+            {'โควต้า '}
           </Text>
-          {usage?.context.percent !== undefined && (
-            <Text dimColor>{`context ${Math.round(usage.context.percent)}%`}</Text>
-          )}
-          {usage?.cost !== undefined && <Text dimColor>{` · $${usage.cost.usd.toFixed(2)}`}</Text>}
+          {limits.length === 0 && <Text dimColor>ยังไม่มีข้อมูล (รอการตอบครั้งแรก หรือไม่ได้ใช้ subscription)</Text>}
+          {limits.map((limit, k) => {
+            const used = Math.min(100, Math.max(0, limit.percentUsed))
+            const cells = Math.round((used / 100) * quotaBar)
+            const color = gradientAt(1 - used / 100)
+            const resetIn = limit.resetsAt === undefined ? NaN : Date.parse(limit.resetsAt) - now
+            return (
+              <Box>
+                <Text>{`${k > 0 ? '  ' : ''}${quotaLabel(limit.kind)} `}</Text>
+                <Text color={color}>{'█'.repeat(cells)}</Text>
+                <Text color="subtle">{'░'.repeat(quotaBar - cells)}</Text>
+                <Text bold color={color}>{` ${Math.round(limit.percentUsed)}%`}</Text>
+                <Text dimColor>{Number.isFinite(resetIn) ? ` ↻${formatSpan(resetIn)}` : ''}</Text>
+              </Box>
+            )
+          })}
         </Box>
-        {limits.length === 0 && <Text dimColor>ยังไม่มีข้อมูลโควต้า (รอการตอบครั้งแรก หรือไม่ได้ใช้ subscription)</Text>}
-        {limits.map(limit => {
-          const used = Math.min(100, Math.max(0, limit.percentUsed))
-          const cells = Math.round((used / 100) * quotaBar)
-          const color = gradientAt(1 - used / 100)
-          const resetIn = limit.resetsAt === undefined ? NaN : Date.parse(limit.resetsAt) - now
-          return (
-            <Box>
-              <Text>{padDisplay(quotaLabel(limit.kind), labelWidth)}</Text>
-              <Text color={color}>{'█'.repeat(cells)}</Text>
-              <Text color="subtle">{'░'.repeat(quotaBar - cells)}</Text>
-              <Text bold color={color}>{` ${String(Math.round(limit.percentUsed)).padStart(3)}%`}</Text>
-              <Text dimColor>{Number.isFinite(resetIn) ? ` รีเซ็ต ${formatSpan(resetIn)}` : ''}</Text>
-            </Box>
-          )
-        })}
+        {(usage?.context.percent !== undefined || usage?.cost !== undefined) && (
+          <Text dimColor>
+            {[
+              usage?.context.percent !== undefined ? `context ${Math.round(usage.context.percent)}%` : '',
+              usage?.cost !== undefined ? `$${usage.cost.usd.toFixed(2)}` : '',
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </Text>
+        )}
       </Box>
     )
 
