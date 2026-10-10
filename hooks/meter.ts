@@ -261,3 +261,19 @@ export const displayWidth = (text: string): number => [...text].filter(ch => !is
 
 export const truncate = (text: string, width: number): string =>
   displayWidth(text) <= width ? text : `${[...text].slice(0, Math.max(1, width - 1)).join('')}…`
+
+const MODEL_FAMILIES = ['opus', 'sonnet', 'haiku', 'fable', 'mythos']
+
+// "claude-opus-5-5" -> "Opus 5.5", "claude-sonnet-4-5-20250929[1m]" -> "Sonnet 4.5"; anything else as given.
+export const modelLabel = (id: string): string => {
+  const parts = id.replace(/\[.*\]$/, '').replace(/^claude-/, '').split('-')
+  const family = parts.findIndex(p => MODEL_FAMILIES.includes(p.toLowerCase()))
+  if (family < 0) return id
+  const name = parts[family]!
+  const version = parts.slice(family + 1).filter(p => /^\d{1,2}$/.test(p))
+
+  return [name[0]!.toUpperCase() + name.slice(1).toLowerCase(), version.join('.')].filter(Boolean).join(' ')
+}
+
+export const modelText = (model: { id: string; effort: string | null }): string =>
+  model.effort === null ? modelLabel(model.id) : `${modelLabel(model.id)} · ${model.effort}`

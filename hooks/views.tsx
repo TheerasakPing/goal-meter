@@ -1,6 +1,6 @@
 import type { Elements, SessionUsage } from 'claude-code'
 
-import type { Agent, Goal, Mode, QuotaSample, Step } from '../types'
+import type { Agent, Goal, Mode, ModelInfo, QuotaSample, Step } from '../types'
 import {
   deadlineState,
   displayWidth,
@@ -9,6 +9,7 @@ import {
   formatDuration,
   formatSpan,
   formatUsd,
+  modelText,
   progress,
   quotaLabel,
   slices,
@@ -29,6 +30,7 @@ export type View = {
   samples: readonly QuotaSample[]
   agents: readonly Agent[]
   factor: number
+  model: ModelInfo | null
 }
 
 export type Actions = {
@@ -80,6 +82,12 @@ const deadlineText = (v: View, goal: Goal): { text: string; color: string } | nu
 
 const runningAgents = (v: View) => v.agents.filter(a => a.doneAt === null)
 
+const ModelTag = (v: View, gap: string) => {
+  const { Text } = v.els
+
+  return v.model === null ? null : <Text color={PALETTE.header}>{`${gap}◆ ${modelText(v.model)}`}</Text>
+}
+
 // --- band above the prompt -------------------------------------------------
 
 export const Band = (v: View) => {
@@ -100,7 +108,14 @@ export const Band = (v: View) => {
     )
   })
   const goal = v.goal
-  if (goal === null) return <Box>{quotaParts}</Box>
+  if (goal === null) {
+    return (
+      <Box>
+        {quotaParts}
+        {ModelTag(v, quotaParts.length > 0 ? '  ' : '')}
+      </Box>
+    )
+  }
 
   const { done, total, ratio } = progress(goal)
   const { remainingMs, etaAt } = estimate(goal, v.now, v.factor)
@@ -147,7 +162,10 @@ export const Band = (v: View) => {
           {agents.length > 0 && <Text color={PALETTE.remaining}>{` · agent ${agents.length} ตัวกำลังทำ`}</Text>}
           {deadline !== null && <Text color={deadline.color}>{deadline.text}</Text>}
         </Box>
-        <Box>{quotaParts}</Box>
+        <Box>
+          {quotaParts}
+          {ModelTag(v, '  ')}
+        </Box>
       </Box>
       {warnings.map(w => (
         <Text color={WARN} bold>
@@ -268,10 +286,13 @@ export const Pane = (v: View, a: Actions, mode: Mode, isMuted: boolean) => {
 
   if (goal === null) {
     return (
-      <Box flexDirection="column">
-        <Box>
-          {badge}
-          <Text dimColor> ยังไม่มีเป้าหมาย — /goal-meter &lt;เป้าหมาย&gt;</Text>
+      <Box flexDirection="column" backgroundColor={PALETTE.paneBg} paddingX={1}>
+        <Box justifyContent="space-between">
+          <Box>
+            {badge}
+            <Text dimColor> ยังไม่มีเป้าหมาย — /goal-meter &lt;เป้าหมาย&gt;</Text>
+          </Box>
+          {ModelTag(v, ' ')}
         </Box>
         <Text> </Text>
         {Quota(v)}
@@ -297,13 +318,16 @@ export const Pane = (v: View, a: Actions, mode: Mode, isMuted: boolean) => {
     ))
 
   return (
-    <Box flexDirection="column">
-      <Box>
-        {badge}
-        <Text bold color={isGoalDone ? PALETTE.done : 'claude'} wrap="truncate-end">
-          {` ${goal.title}`}
-        </Text>
-        {goal.source === 'tasks' && <Text dimColor> (จาก task list)</Text>}
+    <Box flexDirection="column" backgroundColor={PALETTE.paneBg} paddingX={1}>
+      <Box justifyContent="space-between">
+        <Box>
+          {badge}
+          <Text bold color={isGoalDone ? PALETTE.done : 'claude'} wrap="truncate-end">
+            {` ${goal.title}`}
+          </Text>
+          {goal.source === 'tasks' && <Text dimColor> (จาก task list)</Text>}
+        </Box>
+        {ModelTag(v, ' ')}
       </Box>
       <Box>
         {StackedBar(v, goal, Math.max(10, v.cols - pctText.length - 1))}

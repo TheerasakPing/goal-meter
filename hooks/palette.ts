@@ -11,6 +11,7 @@ export const PALETTE = {
   running: '#f59e0b',
   pending: 'inactive',
   branch: 'subtle',
+  paneBg: '#000000',
 } as const
 
 export const STATUS_COLOR: Record<Status, string> = {

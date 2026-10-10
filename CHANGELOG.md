@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] - 2026-10-10
+
+### Added
+- The model the main loop runs on, with its reasoning effort (`Opus 5.5 · high`), in the band, the pane header and the status line. It shows after the first request and follows `/model` switches and fallbacks; subagents' models are left out.
+
+### Changed
+- The pane has a black background.
+
 ## [0.5.0] - 2026-10-10
 
 ### Added
@@ -56,6 +64,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - `/goal-meter` command to open the pane, set a goal or clear it.
 - Status line summary and a toast when the goal is reached.
 
+[0.6.0]: https://github.com/TheerasakPing/goal-meter/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/TheerasakPing/goal-meter/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/TheerasakPing/goal-meter/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/TheerasakPing/goal-meter/compare/v0.2.0...v0.3.0

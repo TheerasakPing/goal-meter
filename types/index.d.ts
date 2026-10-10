@@ -45,6 +45,9 @@ export type Agent = {
 
 export type QuotaSample = { kind: string; at: number; pct: number; resetsAt: string | null }
 
+// The model the main loop last sent a request to, and its reasoning effort.
+export type ModelInfo = { id: string; effort: string | null }
+
 export type HistoryEntry = {
   title: string
   startedAt: number
@@ -68,6 +71,7 @@ declare module 'claude-code' {
       quotaSamples: QuotaSample[]
       alerted: string[]
       etaFactor: number
+      model: ModelInfo | null
     }
   }
 }

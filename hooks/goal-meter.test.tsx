@@ -7,6 +7,7 @@ import {
   estimate,
   etaFactor,
   mergeTasks,
+  modelLabel,
   newGoal,
   parseDeadline,
   setPaused,
@@ -14,7 +15,7 @@ import {
   startActive,
   stopActive,
 } from './meter'
-import { taskColor } from './palette'
+import { PALETTE, taskColor } from './palette'
 import { addSamples, exhaustAt, newAlerts } from './quota'
 import { historyTable, report } from './report'
 
@@ -28,8 +29,8 @@ type Usage = { percent?: number; cost?: number; limits?: { kind: string; percent
 const setup = (on: On, usage: Usage = {}, stored: Record<string, unknown> = {}) => {
   const clock = mock.clock(on, { now: T0 })
   mock.store(on, stored)
-  const seen = { opened: [] as string[], closed: [] as string[], toasts: [] as string[], sounds: [] as string[], prompts: [] as string[] }
-  on('ui.status', () => ({ value: undefined }) as never)
+  const seen = { opened: [] as string[], closed: [] as string[], toasts: [] as string[], sounds: [] as string[], prompts: [] as string[], statuses: [] as (string | undefined)[] }
+  on('ui.status', (_$, e) => (seen.statuses.push((e as { text?: string }).text), { value: undefined }) as never)
   on('ui.open', (_$, e) => (seen.opened.push(e.id), { value: { isPlaced: true } }) as never)
   on('ui.close', (_$, e) => (seen.closed.push(e.id), { value: undefined }) as never)
   on('ui.toast', (_$, e) => (seen.toasts.push(String((e as { text: unknown }).text)), { value: undefined }) as never)
@@ -369,6 +370,20 @@ describe('engine events', () => {
     expect(texts.some(t => t.startsWith('✔'))).toBe(true)
   })
 
+  test('shows the model the main loop runs on, not a subagent\'s', async ($, on) => {
+    const { seen } = setup(on)
+    on('turn.step', async function* (_$, e) {
+      return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: 'end_turn' } as never
+    })
+    for await (const _ of $.turn.step({ turnId: 't', index: 0, model: 'claude-opus-5-5', effort: 'high', messageCount: 1 } as never)) void _
+    for await (const _ of $.turn.step({ turnId: 's', index: 0, model: 'claude-haiku-5-5', messageCount: 1, agentId: 'ag1' } as never)) void _
+    expect(seen.statuses.at(-1)).toBe('Opus 5.5 · high')
+    const ui = await $.ui.mount({ plugin: 'goal-meter', surface: 'terminal', component: 'Pane', requestId: 'goal-meter', props: PANE_PROPS })
+    const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
+    expect(texts).toContain(' ◆ Opus 5.5 · high')
+    expect((await ui.findAll({ type: 'Box' }))[0]?.props.backgroundColor).toBe(PALETTE.paneBg)
+  })
+
   test('a goal in progress carries over to the next session', async ($, on) => {
     const saved = { ...newGoal('Long job', 'meter', T0 - 3_600_000, null, true), tasks: mergeTasks([{ title: 'a', status: 'in_progress' }], [], T0) }
     setup(on, {}, { goal: saved })
@@ -379,5 +394,14 @@ describe('engine events', () => {
     const text = await reportOf($)
     expect(text).toContain('## Long job')
     expect(text).toContain('- [~] a')
+  })
+})
+
+describe('model label', () => {
+  test('shortens model ids', () => {
+    expect(modelLabel('claude-opus-5-5')).toBe('Opus 5.5')
+    expect(modelLabel('claude-sonnet-4-5-20250929[1m]')).toBe('Sonnet 4.5')
+    expect(modelLabel('claude-fable-5-1')).toBe('Fable 5.1')
+    expect(modelLabel('gpt-5.6-sol')).toBe('gpt-5.6-sol')
   })
 })

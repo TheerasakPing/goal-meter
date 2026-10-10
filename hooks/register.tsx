@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, SessionUsage } from 'claude-code'
 
-import type { Agent, Goal, HistoryEntry, MainTask, Mode } from '../types'
+import type { Agent, Goal, HistoryEntry, MainTask, Mode, ModelInfo } from '../types'
 import {
   deadlineState,
   estimate,
@@ -9,6 +9,7 @@ import {
   formatClock,
   formatDuration,
   mergeTasks,
+  modelText,
   newGoal,
   notePrediction,
   parseDeadline,
@@ -44,6 +45,7 @@ const agentsAtom = atom({ plugin: 'goal-meter', key: 'agents' } as const, [])
 const quotaSamplesAtom = atom({ plugin: 'goal-meter', key: 'quotaSamples' } as const, [])
 const alertedAtom = atom({ plugin: 'goal-meter', key: 'alerted' } as const, [])
 const etaFactorAtom = atom({ plugin: 'goal-meter', key: 'etaFactor' } as const, 1)
+const modelAtom = atom({ plugin: 'goal-meter', key: 'model' } as const, null)
 
 const PANE = 'goal-meter'
 const TOOL = 'mcp__goal-meter__update'
@@ -126,16 +128,26 @@ const playSound = async ($: EngineInterface, asset: string): Promise<void> => {
 
 // --- status line ---------------------------------------------------------------
 
-const statusLine = (goal: Goal | null, now: number, usage: SessionUsage | null, factor: number, agents: readonly Agent[]): string | undefined => {
+const statusLine = (
+  goal: Goal | null,
+  now: number,
+  usage: SessionUsage | null,
+  factor: number,
+  agents: readonly Agent[],
+  model: ModelInfo | null,
+): string | undefined => {
   const quota = (usage?.rateLimits ?? []).map(l => `${quotaLabel(l.kind)} ${Math.round(l.percentUsed)}%`).join(' · ')
-  if (goal === null) return quota === '' ? undefined : `โควต้า ${quota}`
+  const tail = [quota === '' ? '' : goal === null ? `โควต้า ${quota}` : quota, model === null ? '' : modelText(model)]
+    .filter(Boolean)
+    .join(' | ')
+  if (goal === null) return tail === '' ? undefined : tail
   const parts = [goalStatus(goal, now, factor)]
   const running = agents.filter(a => a.doneAt === null).length
   if (running > 0) parts.push(`agent ${running}`)
   const deadline = deadlineState(goal, now, factor)
   if (deadline.kind === 'late') parts.push(`ช้ากว่ากำหนด ~${formatDuration(deadline.byMs)}`)
 
-  return quota === '' ? parts.join(' · ') : `${parts.join(' · ')} | ${quota}`
+  return tail === '' ? parts.join(' · ') : `${parts.join(' · ')} | ${tail}`
 }
 
 const goalStatus = (goal: Goal, now: number, factor: number): string => {
@@ -160,6 +172,7 @@ const refreshStatus = async ($: EngineInterface, usage?: SessionUsage | null): P
     usage === undefined ? await usageOf($) : usage,
     await read($, etaFactorAtom),
     await read($, agentsAtom),
+    await read($, modelAtom),
   )
   $.ui.status(text)
 }
@@ -222,6 +235,7 @@ const view = async ($: EngineInterface, els: Els, cols: number): Promise<View> =
   samples: await read($, quotaSamplesAtom),
   agents: await read($, agentsAtom),
   factor: await read($, etaFactorAtom),
+  model: await read($, modelAtom),
 })
 
 const actions = ($: EngineInterface): Actions => ({
@@ -299,6 +313,20 @@ export const register: Register = on => {
     if (goal !== null) await saveGoal($, startActive(goal, await $.clock.now()))
 
     return next(e)
+  })
+
+  // Each main-loop request names the model it goes to (a /model switch or a fallback shows on the next one).
+  on('turn.step', async function* ($, e, next) {
+    if (e.agentId === undefined) {
+      const model: ModelInfo = { id: e.model, effort: e.effort === undefined ? null : String(e.effort) }
+      const prev = await read($, modelAtom)
+      if (prev?.id !== model.id || prev.effort !== model.effort) {
+        await update($, modelAtom, () => model)
+        await refreshStatus($)
+      }
+    }
+
+    return yield* next(e)
   })
 
   on('turn.complete', async ($, e, next) => {
@@ -498,7 +526,7 @@ export const register: Register = on => {
     const goal = await read($, goalAtom)
     const usage = await usageOf($)
     const isHidden = e.props.hasSurvey || (await read($, isBandHiddenAtom)) || !hasStatus(await read($, modeAtom))
-    if (isHidden || (goal === null && (usage?.rateLimits ?? []).length === 0)) return next(e)
+    if (isHidden || (goal === null && (usage?.rateLimits ?? []).length === 0 && (await read($, modelAtom)) === null)) return next(e)
 
     return Band(await view($, $.ui.resolve(e) as unknown as Els, e.props.bodyColumns || 80))
   })
